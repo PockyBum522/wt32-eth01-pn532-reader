@@ -3,7 +3,7 @@
 
 void SketchInitializers::InitializeSpiPins()
 {
-    constexpr const static uint8_t spi_host = 1;
+    constexpr const static uint8_t spi_host = 0;
 
     constexpr const static int8_t pin_cs = 14;
 
