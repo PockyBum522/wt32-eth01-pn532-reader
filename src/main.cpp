@@ -17,6 +17,8 @@
 
 // Replace the addresses on the end with the crash data, obviously.
 
+bool m_foundNfcBoardOnBoot;
+
 WebServer server(80);
 
 // Variable to store the HTTP request
@@ -45,7 +47,20 @@ void setup()
 
     Serial.begin(115200);
 
+    int countDown = 100;
+
+    while (countDown-- > 0)
+    {
+        Serial.print("Boot delay...");
+        yield();
+        delay(100);
+    }
+
+    Serial.println("About to init SPI pins");
+
     SketchInitializers::InitializeSpiPins();
+
+    delay(50);
 
     ETH.begin(ETH_PHY_ADDR, ETH_PHY_POWER);
 
@@ -61,60 +76,62 @@ void setup()
     Serial.println();
     Serial.println();
 
-    server.on("/", []()
-    {
-        server.send(200, "text/plain", "Hi! This is PN532 NFC reader");
-    });
+//    server.on("/", []()
+//    {
+//        server.send(200, "text/plain", "Hi! This is PN532 NFC reader");
+//    });
+//
+//    ElegantOTA.begin(&server);    // Start ElegantOTA
+//    server.begin();
+//
+//    mqttClient.setServer(SECRETS::MqttBroker, SECRETS::MqttPort);
+//    mqttClient.setCallback(mqttCallback);
+//
+//    while (!mqttClient.connected())
+//    {
+//        server.handleClient();
+//        ElegantOTA.loop();
+//
+//        String client_id = "esp32-client-";
+//        client_id += String(ETH.macAddress());
+//
+//        //Serial.printf("The client %s connects to the public MQTT broker\n", client_id.c_str());
+//
+//        if (mqttClient.connect(client_id.c_str(), SECRETS::MqttUsername, SECRETS::MqttPassword))
+//        {
+//            Serial.println("Public EMQX MQTT broker connected");
+//        }
+//        else
+//        {
+//            Serial.print("failed with state ");
+//            Serial.print(mqttClient.state());
+//
+//            delay(50);
+//        }
+//    }
+//
+//    String subscribeMessage = "Subscribing to: ";
+//    mqttClient.subscribe(SECRETS::MqttTopicGeneralStatus);
+//    mqttClient.publish(SECRETS::MqttTopicGeneralStatus, subscribeMessage.c_str());
+//
+//    mqttClient.subscribe(SECRETS::MqttTopicDeviceStatus);
+//    mqttClient.subscribe(SECRETS::MqttTopicTagScanned);
+//
+//    dumpLastCrashDataToMqtt();
 
-    ElegantOTA.begin(&server);    // Start ElegantOTA
-    server.begin();
-
-    mqttClient.setServer(SECRETS::MqttBroker, SECRETS::MqttPort);
-    mqttClient.setCallback(mqttCallback);
-
-    while (!mqttClient.connected())
-    {
-        server.handleClient();
-        ElegantOTA.loop();
-
-        String client_id = "esp32-client-";
-        client_id += String(ETH.macAddress());
-
-        //Serial.printf("The client %s connects to the public MQTT broker\n", client_id.c_str());
-
-        if (mqttClient.connect(client_id.c_str(), SECRETS::MqttUsername, SECRETS::MqttPassword))
-        {
-            Serial.println("Public EMQX MQTT broker connected");
-        }
-        else
-        {
-            Serial.print("failed with state ");
-            Serial.print(mqttClient.state());
-
-            delay(50);
-        }
-    }
-
-    String subscribeMessage = "Subscribing to: ";
-    mqttClient.subscribe(SECRETS::MqttTopicGeneralStatus);
-    mqttClient.publish(SECRETS::MqttTopicGeneralStatus, subscribeMessage.c_str());
-
-    mqttClient.subscribe(SECRETS::MqttTopicDeviceStatus);
-    mqttClient.subscribe(SECRETS::MqttTopicTagScanned);
-
-    dumpLastCrashDataToMqtt();
+    delay(50);
 
     initializeNfcBoard();
 
-    String helloMessage = "NFC reader ESP32 up! ";
-    helloMessage += m_versionMessage;
-    helloMessage += " @ ";
-    helloMessage += String(ETH.localIP());
-
-    mqttClient.publish(SECRETS::MqttTopicGeneralStatus, helloMessage.c_str());
-    mqttClient.publish(SECRETS::MqttTopicDeviceStatus, helloMessage.c_str());
-
-    mqttClient.publish(SECRETS::MqttTopicDeviceStatus, "ABOUT TO NFC INIT:" );
+//    String helloMessage = "NFC reader ESP32 up! ";
+//    helloMessage += m_versionMessage;
+//    helloMessage += " @ ";
+//    helloMessage += String(ETH.localIP());
+//
+//    mqttClient.publish(SECRETS::MqttTopicGeneralStatus, helloMessage.c_str());
+//    mqttClient.publish(SECRETS::MqttTopicDeviceStatus, helloMessage.c_str());
+//
+//    mqttClient.publish(SECRETS::MqttTopicDeviceStatus, "ABOUT TO NFC INIT:" );
 }
 
 String getIncomingPayloadAsString(const uint8_t *payload, unsigned int payloadLength);
@@ -123,7 +140,16 @@ void CheckForNfcTag();
 
 void loop()
 {
-    CheckForNfcTag();
+//    if (m_foundNfcBoardOnBoot)
+//        CheckForNfcTag();
+
+
+    Serial.print("Found NFC board on boot? ");
+
+    if (m_foundNfcBoardOnBoot)
+        Serial.println("True");
+    else
+        Serial.println("False");
 
     // server.handleClient();
     //
@@ -133,7 +159,7 @@ void loop()
     //
     // CheckForNfcTag();
 
-    mqttClient.loop();
+    //mqttClient.loop();
 
     // mqttClient.publish(SECRETS::MqttTopicDeviceStatus, "Loop took millis: ");
     // mqttClient.publish(SECRETS::MqttTopicDeviceStatus, String(stopMillis).c_str());
@@ -238,7 +264,10 @@ void CheckForNfcTag()
 
         UIDString.toUpperCase();
 
-        mqttClient.publish(SECRETS::MqttTopicTagScanned, UIDString.c_str());
+        Serial.print("New tag scanned: ");
+        Serial.println(UIDString);
+
+        //mqttClient.publish(SECRETS::MqttTopicTagScanned, UIDString.c_str());
     }
 }
 
@@ -277,6 +306,8 @@ void initializeNfcBoard()
     }
     else
     {
+        m_foundNfcBoardOnBoot = true;
+
         Serial.println("Found chip PN5" + String((versiondata>>24) & 0xFF, HEX));
         Serial.println("Firmware ver: " + String((versiondata>>16) & 0xFF, DEC) + "." + String((versiondata>>8) & 0xFF, DEC));
 
