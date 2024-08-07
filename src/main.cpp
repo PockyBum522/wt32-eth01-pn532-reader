@@ -47,7 +47,7 @@ void setup()
 
     Serial.begin(115200);
 
-    int countDown = 100;
+    int countDown = 50;
 
     while (countDown-- > 0)
     {
@@ -58,9 +58,7 @@ void setup()
 
     Serial.println("About to init SPI pins");
 
-    SketchInitializers::InitializeSpiPins();
-
-    delay(100);
+    //SketchInitializers::InitializeSpiPins();
 
 //    ETH.begin(ETH_PHY_ADDR, ETH_PHY_POWER);
 //
@@ -139,8 +137,8 @@ void CheckForNfcTag();
 void loop()
 {
 //    if (m_foundNfcBoardOnBoot)
-//        CheckForNfcTag();
 
+    CheckForNfcTag();
 
     Serial.print("Found NFC board on boot? ");
 
@@ -253,11 +251,7 @@ void CheckForNfcTag()
     // 'uid' will be populated with the UID, and uidLength will indicate
     // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
 
-    delay(100);
-
     boolean success = m_nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
-
-    delay(100);
 
     if (success)
     {
@@ -308,11 +302,7 @@ void initializeNfcBoard()
 {
     m_nfc.begin();
 
-    delay(100);
-
     uint32_t versiondata = m_nfc.getFirmwareVersion();
-
-    delay(100);
 
     if (!versiondata)
     {
