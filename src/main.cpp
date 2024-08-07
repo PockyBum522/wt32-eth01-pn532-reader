@@ -47,7 +47,7 @@ void setup()
 
     Serial.begin(115200);
 
-    int countDown = 50;
+    int countDown = 5;
 
     while (countDown-- > 0)
     {
@@ -251,23 +251,23 @@ void CheckForNfcTag()
     // 'uid' will be populated with the UID, and uidLength will indicate
     // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
 
-    boolean success = m_nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
+    boolean success = m_nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength, 2);
 
     if (success)
     {
         String UIDString = "UID=";
 
-        for (uint8_t i = 0; i < uidLength; i++)
-        {
-            UIDString += decToHex(uid[i], 2);
-
-            if (i < uidLength - 1)
-            {
-                UIDString += ':';
-            }
-        }
-
-        UIDString.toUpperCase();
+        // for (uint8_t i = 0; i < uidLength; i++)
+        // {
+        //     UIDString += decToHex(uid[i], 2);
+        //
+        //     if (i < uidLength - 1)
+        //     {
+        //         UIDString += ':';
+        //     }
+        // }
+        //
+        // UIDString.toUpperCase();
 
         Serial.print("New tag scanned: ");
         Serial.println(UIDString);
