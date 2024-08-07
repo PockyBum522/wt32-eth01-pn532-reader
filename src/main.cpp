@@ -60,21 +60,21 @@ void setup()
 
     SketchInitializers::InitializeSpiPins();
 
-    delay(50);
+    delay(100);
 
-    ETH.begin(ETH_PHY_ADDR, ETH_PHY_POWER);
-
-    // Print local IP address and start web server
-    Serial.println("");
-    Serial.println("Ethernet connected.");
-    Serial.println("IP address: ");
-    Serial.println(ETH.localIP());
-
-    Serial.println();
-    Serial.println();
-    Serial.println(m_versionMessage);
-    Serial.println();
-    Serial.println();
+//    ETH.begin(ETH_PHY_ADDR, ETH_PHY_POWER);
+//
+//    // Print local IP address and start web server
+//    Serial.println("");
+//    Serial.println("Ethernet connected.");
+//    Serial.println("IP address: ");
+//    Serial.println(ETH.localIP());
+//
+//    Serial.println();
+//    Serial.println();
+//    Serial.println(m_versionMessage);
+//    Serial.println();
+//    Serial.println();
 
 //    server.on("/", []()
 //    {
@@ -119,8 +119,6 @@ void setup()
 //
 //    dumpLastCrashDataToMqtt();
 
-    delay(50);
-
     initializeNfcBoard();
 
 //    String helloMessage = "NFC reader ESP32 up! ";
@@ -147,9 +145,18 @@ void loop()
     Serial.print("Found NFC board on boot? ");
 
     if (m_foundNfcBoardOnBoot)
+    {
         Serial.println("True");
+    }
     else
+    {
         Serial.println("False");
+
+        while(true){
+            delay(100);
+            yield();
+        }
+    }
 
     // server.handleClient();
     //
@@ -246,7 +253,11 @@ void CheckForNfcTag()
     // 'uid' will be populated with the UID, and uidLength will indicate
     // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
 
+    delay(100);
+
     boolean success = m_nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
+
+    delay(100);
 
     if (success)
     {
@@ -297,7 +308,11 @@ void initializeNfcBoard()
 {
     m_nfc.begin();
 
+    delay(100);
+
     uint32_t versiondata = m_nfc.getFirmwareVersion();
+
+    delay(100);
 
     if (!versiondata)
     {
