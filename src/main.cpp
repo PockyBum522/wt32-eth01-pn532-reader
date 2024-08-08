@@ -1,6 +1,8 @@
+#include <Adafruit_SPIDevice.h>
+#include <Adafruit_PN532.h>
 #include <Arduino.h>
 #include <ETH.h>
-#include <External/Adafruit PN532/Adafruit_PN532.h>
+
 
 String m_versionMessage = "v0.01";
 
@@ -11,7 +13,10 @@ WiFiClient ethernetClient;
 #define PN532_MISO 36
 #define PN532_SCK  32
 
-Adafruit_PN532 m_nfc(PN532_SCK, PN532_MISO, PN532_MOSI, PN532_SS);
+auto spiDevice = new Adafruit_SPIDevice(PN532_SS, PN532_SCK, PN532_MISO, PN532_MOSI,
+    300000, SPI_BITORDER_LSBFIRST, SPI_MODE0);
+
+Adafruit_PN532 m_nfc(PN532_SS, spiDevice);
 
 void initializeNfcBoard();
 
@@ -96,7 +101,7 @@ void initializeNfcBoard()
     {
         Serial.println("Found chip PN5" + String((versiondata>>24) & 0xFF, HEX));
         Serial.println("Firmware ver: " + String((versiondata>>16) & 0xFF, DEC) + "." + String((versiondata>>8) & 0xFF, DEC));
-    }
 
-    m_nfc.setPassiveActivationRetries(0x01);        // Set the max number of retry attempts to read from a card, preventing us from waiting forever for a card, which is the default behaviour of the PN532
+        m_nfc.setPassiveActivationRetries(0x01);        // Set the max number of retry attempts to read from a card, preventing us from waiting forever for a card, which is the default behaviour of the PN532
+    }
 }
