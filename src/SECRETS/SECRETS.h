@@ -17,6 +17,7 @@ public:
     static const char* MqttTopicGeneralStatus;
     static const char* MqttTopicDeviceStatus;
     static const char* MqttTopicTagScanned;
+    static const char* MqttTopicDebug;
 
 };
 
