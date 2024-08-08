@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <ETH.h>
-#define PN532DEBUG
 #include <External/Adafruit PN532/Adafruit_PN532.h>
 
 String m_versionMessage = "v0.01";
@@ -36,9 +35,14 @@ void setup()
 
 void CheckForNfcTag();
 
+long successCount = 0;
+
 void loop()
 {
     CheckForNfcTag();
+
+    Serial.print("loop: ");
+    Serial.println(successCount++);
 }
 
 String decToHex(const byte decValue, const byte desiredStringLength)
@@ -93,7 +97,6 @@ void initializeNfcBoard()
         Serial.println("Found chip PN5" + String((versiondata>>24) & 0xFF, HEX));
         Serial.println("Firmware ver: " + String((versiondata>>16) & 0xFF, DEC) + "." + String((versiondata>>8) & 0xFF, DEC));
     }
-
 
     m_nfc.setPassiveActivationRetries(0x01);        // Set the max number of retry attempts to read from a card, preventing us from waiting forever for a card, which is the default behaviour of the PN532
 }
