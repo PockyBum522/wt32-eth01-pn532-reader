@@ -121,26 +121,28 @@ void mqttCallback(const char *topic, const byte *payload, unsigned int length)
 
     if (topicStr == SECRETS::MqttTopicGeneralStatus)
     {
-        String incomingMessage = payloadStr;
-        incomingMessage += " <= General status request seen | NFC board found on boot: ";
+        if (payloadStr == "info") {
+            String incomingMessage = payloadStr;
+            incomingMessage += " <= General status request seen | NFC board found on boot: ";
 
-        if (m_nfcInitializedOnBoot)
-        {
-            incomingMessage += "True";
+            if (m_nfcInitializedOnBoot)
+            {
+                incomingMessage += "True";
+            }
+            else
+            {
+                incomingMessage += "False";
+            }
+
+            incomingMessage += " | At IP: ";
+            incomingMessage += String(ETH.localIP().toString());
+
+            incomingMessage += " | Local epoch (seconds): ";
+            incomingMessage += String(rtc.getLocalEpoch());
+
+            mqttClient.publish(SECRETS::MqttTopicDeviceStatus, incomingMessage.c_str());
+            Log(incomingMessage);
         }
-        else
-        {
-            incomingMessage += "False";
-        }
-
-        incomingMessage += " | At IP: ";
-        incomingMessage += String(ETH.localIP().toString());
-
-        incomingMessage += " | Local epoch (seconds): ";
-        incomingMessage += String(rtc.getLocalEpoch());
-
-        mqttClient.publish(SECRETS::MqttTopicDeviceStatus, incomingMessage.c_str());
-        Log(incomingMessage);
     }
 }
 
