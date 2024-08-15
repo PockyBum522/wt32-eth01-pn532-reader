@@ -6,6 +6,7 @@
 #include <PubSubClient.h>
 #include <iostream>
 #include <backtrace_saver.hpp>
+#include <ESP32Time.h>
 
 #include "SECRETS/SECRETS.h"
 
@@ -16,14 +17,18 @@
 
 // Replace the addresses on the end with the crash data, obviously.
 
-bool m_debug_on = false;
 String m_versionMessage = "v0.01";
+
+bool m_debug_on = false;
+bool m_nfcInitializedOnBoot = false;
 
 WebServer server(80);
 String header;      // Variable to store the HTTP request
 
 WiFiClient ethernetClient;
 PubSubClient mqttClient(ethernetClient);
+
+ESP32Time rtc(0);
 
 #define PN532_MOSI 4
 #define PN532_SS   14
@@ -67,6 +72,7 @@ void setup()
 void CheckForNfcTag();
 void Log(const std::string& message);
 void Log(const StringSumHelper &message);
+void checkIfShouldAutoReset();
 
 void loop()
 {
@@ -83,6 +89,8 @@ void loop()
     mqttClient.loop();
 
     CheckForNfcTag();
+
+    checkIfShouldAutoReset();
 }
 
 String getIncomingPayloadAsString(const uint8_t *payload, unsigned int payloadLength);
@@ -101,21 +109,29 @@ void mqttCallback(const char *topic, const byte *payload, unsigned int length)
 
     Log(newMessage);
 
-    // if (topicStr == SECRETS::MqttTopicGeneralStatus)
-    // {
-    //     String incomingMessage = payloadStr;
-    //     incomingMessage += " <= General status request seen";
-    //
-    //     Log(incomingMessage);
-    // }
-    //
-    // if (topicStr == SECRETS::MqttTopicDeviceStatus)
-    // {
-    //     String incomingMessage = payloadStr;
-    //     incomingMessage += " <= Device status request seen";
-    //
-    //     Log(incomingMessage);
-    // }
+    if (topicStr == SECRETS::MqttTopicGeneralStatus)
+    {
+        String incomingMessage = payloadStr;
+        incomingMessage += " <= General status request seen | NFC board found on boot: ";
+
+        if (m_nfcInitializedOnBoot)
+        {
+            incomingMessage += "True";
+        }
+        else
+        {
+            incomingMessage += "False";
+        }
+
+        incomingMessage += " | At IP: ";
+        incomingMessage += String(ETH.localIP().toString());
+
+        incomingMessage += " | Local epoch (seconds): ";
+        incomingMessage += String(rtc.getLocalEpoch());
+
+        mqttClient.publish(SECRETS::MqttTopicDeviceStatus, incomingMessage.c_str());
+        Log(incomingMessage);
+    }
 }
 
 String decToHex(const byte decValue, const byte desiredStringLength)
@@ -169,6 +185,8 @@ void initializeNfcBoard()
     {
         Serial.println("Found chip PN5" + String((versiondata>>24) & 0xFF, HEX));
         Serial.println("Firmware ver: " + String((versiondata>>16) & 0xFF, DEC) + "." + String((versiondata>>8) & 0xFF, DEC));
+
+        m_nfcInitializedOnBoot = true;
 
         m_nfc.setPassiveActivationRetries(0x01);        // Set the max number of retry attempts to read from a card, preventing us from waiting forever for a card, which is the default behaviour of the PN532
     }
@@ -239,9 +257,8 @@ void connectToMqtt()
         }
     }
 
-    String subscribeMessage = "Subscribing to: ";
     mqttClient.subscribe(SECRETS::MqttTopicGeneralStatus);
-    mqttClient.publish(SECRETS::MqttTopicGeneralStatus, subscribeMessage.c_str());
+    // mqttClient.publish(SECRETS::MqttTopicGeneralStatus, subscribeMessage.c_str());
 
     mqttClient.subscribe(SECRETS::MqttTopicDeviceStatus);
     //mqttClient.subscribe(SECRETS::MqttTopicTagScanned);
@@ -293,10 +310,17 @@ void dumpLastCrashDataToMqtt()
 #if CONFIG_RESTART_DEBUG_STACK_DEPTH > 0
     for (int i = 0; i < CONFIG_RESTART_DEBUG_STACK_DEPTH; i++)
     {
-        crashDumpAddresses += String(current_debug_info.backtrace[i], HEX).c_str();
+        // Had to add .first here to get the first of the pair. Not sure how this was working before.
+        // If addresses are not looking correct, then just try .second. No idea where the pair came from
+        uint32_t backtraceAddress = current_debug_info.backtrace[i].first;
+
+        crashDumpAddresses += String(backtraceAddress, HEX).c_str();
+
         crashDumpAddresses += " ";
     }
 #endif
+
+    crashDumpAddresses += String("PLEASE FIX THIS IN dumpLastCrashDataToMqtt() in main.cpp, may need .second on the backtrace address fetch if addresses do not look right").c_str();
 
     mqttClient.publish(SECRETS::MqttTopicDebug, " ");
     mqttClient.publish(SECRETS::MqttTopicDebug, "-----========== LAST CRASH DATA ==========-----");
@@ -337,4 +361,10 @@ void sendNetworkInfoToMqtt()
 
     mqttClient.publish(SECRETS::MqttTopicGeneralStatus, message.c_str());
     mqttClient.publish(SECRETS::MqttTopicDeviceStatus, message.c_str());
+}
+
+void checkIfShouldAutoReset()
+{
+    // if (rtc.getLocalEpoch() > 7200)
+    //     ESP.restart();
 }
