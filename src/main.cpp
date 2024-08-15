@@ -19,7 +19,10 @@
 
 String m_versionMessage = "v0.01";
 
+// SET THESE TWO TO FALSE BEFORE UPLOADING OTA OR TO REAL BOARD
 bool m_debug_on = false;
+bool m_test_mode_no_network_no_nfc = false;
+
 bool m_nfcInitializedOnBoot = false;
 
 WebServer server(80);
@@ -50,12 +53,17 @@ void initializeNfcBoard();
 void setupElegantOtaServer();
 void connectToMqtt();
 void sendNetworkInfoToMqtt();
+void warnIfTestModeEnabled();
 
 void setup()
 {
     Serial.begin(115200);
 
     delayBootForSerialStart();
+
+    warnIfTestModeEnabled();
+
+    if (m_test_mode_no_network_no_nfc) return;
 
     ETH.begin(ETH_PHY_ADDR, ETH_PHY_POWER);
     serialPrintNetworkInformation();
@@ -76,6 +84,10 @@ void checkIfShouldAutoReset();
 
 void loop()
 {
+    checkIfShouldAutoReset();
+
+    if (m_test_mode_no_network_no_nfc) return;
+
     CheckForNfcTag();
 
     server.handleClient();
@@ -89,8 +101,6 @@ void loop()
     mqttClient.loop();
 
     CheckForNfcTag();
-
-    checkIfShouldAutoReset();
 }
 
 String getIncomingPayloadAsString(const uint8_t *payload, unsigned int payloadLength);
@@ -365,6 +375,19 @@ void sendNetworkInfoToMqtt()
 
 void checkIfShouldAutoReset()
 {
-    // if (rtc.getLocalEpoch() > 7200)
-    //     ESP.restart();
+    if (rtc.getLocalEpoch() <= 3000) return;    // An hour-ish
+
+    Serial.println("Auto-restarting due to local epoch!");
+
+    rtc.setTime(0);
+
+    ESP.restart();
+}
+
+void warnIfTestModeEnabled()
+{
+    if (!m_test_mode_no_network_no_nfc) return;
+
+    for (int i = 0; i < 100; i++)
+        Serial.println("WARNING: m_test_mode_no_network_no_nfc IS ENABLED. DISABLE BEFORE UPLOADING OTA");
 }
