@@ -7,6 +7,7 @@
 #include <iostream>
 #include <backtrace_saver.hpp>
 #include <ESP32Time.h>
+#include <elapsedMillis.h>
 
 #include "SECRETS/SECRETS.h"
 
@@ -30,6 +31,8 @@ String header;      // Variable to store the HTTP request
 
 WiFiClient ethernetClient;
 PubSubClient mqttClient(ethernetClient);
+
+elapsedMillis sinceLastKeepAliveMessage;
 
 ESP32Time rtc(0);
 
@@ -58,6 +61,9 @@ void warnIfTestModeEnabled();
 void setup()
 {
     Serial.begin(115200);
+
+    pinMode(15, OUTPUT);
+    digitalWrite(15, HIGH);
 
     delayBootForSerialStart();
 
@@ -97,6 +103,30 @@ void loop()
     ElegantOTA.loop();
 
     CheckForNfcTag();
+
+    if (sinceLastKeepAliveMessage > 20000)
+    {
+        sinceLastKeepAliveMessage = 0;
+
+        String incomingMessage = "Keepalive message | NFC board found on boot: ";
+
+        if (m_nfcInitializedOnBoot)
+        {
+            incomingMessage += "True";
+        }
+        else
+        {
+            incomingMessage += "False";
+        }
+
+        incomingMessage += " | At IP: ";
+        incomingMessage += String(ETH.localIP().toString());
+
+        incomingMessage += " | Local epoch (seconds): ";
+        incomingMessage += String(rtc.getLocalEpoch());
+
+        mqttClient.publish(SECRETS::MqttTopicDeviceStatus, incomingMessage.c_str());
+    }
 
     mqttClient.loop();
 
@@ -377,9 +407,12 @@ void sendNetworkInfoToMqtt()
 
 void checkIfShouldAutoReset()
 {
-    if (rtc.getLocalEpoch() <= 3000) return;    // An hour-ish
+    if (rtc.getLocalEpoch() <= 600) return;
 
     Serial.println("Auto-restarting due to local epoch!");
+
+    digitalWrite(15, LOW);
+    delay(750);
 
     rtc.setTime(0);
 
