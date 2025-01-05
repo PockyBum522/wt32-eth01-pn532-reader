@@ -90,47 +90,55 @@ void checkIfShouldAutoReset();
 
 void loop()
 {
-    checkIfShouldAutoReset();
+	if (!mqttClient.connected())
+	{
+		yield();
+		delay(500);
+		yield();
 
-    if (m_test_mode_no_network_no_nfc) return;
+    	connectToMqtt();
+		checkIfShouldAutoReset();
+	}
 
-    CheckForNfcTag();
+	if (m_test_mode_no_network_no_nfc) return;
 
-    server.handleClient();
+	CheckForNfcTag();
 
-    CheckForNfcTag();
+	server.handleClient();
 
-    ElegantOTA.loop();
+	CheckForNfcTag();
 
-    CheckForNfcTag();
+	ElegantOTA.loop();
 
-    if (sinceLastKeepAliveMessage > 20000)
-    {
-        sinceLastKeepAliveMessage = 0;
+	CheckForNfcTag();
 
-        String incomingMessage = "Keepalive message | NFC board found on boot: ";
+	if (sinceLastKeepAliveMessage > 20000)
+	{
+		sinceLastKeepAliveMessage = 0;
 
-        if (m_nfcInitializedOnBoot)
-        {
-            incomingMessage += "True";
-        }
-        else
-        {
-            incomingMessage += "False";
-        }
+		String incomingMessage = "Keepalive message | NFC board found on boot: ";
 
-        incomingMessage += " | At IP: ";
-        incomingMessage += String(ETH.localIP().toString());
+		if (m_nfcInitializedOnBoot)
+		{
+			incomingMessage += "True";
+		}
+		else
+		{
+			incomingMessage += "False";
+		}
 
-        incomingMessage += " | Local epoch (seconds): ";
-        incomingMessage += String(rtc.getLocalEpoch());
+		incomingMessage += " | At IP: ";
+		incomingMessage += String(ETH.localIP().toString());
 
-        mqttClient.publish(SECRETS::MqttTopicDeviceStatus, incomingMessage.c_str());
-    }
+		incomingMessage += " | Local epoch (seconds): ";
+		incomingMessage += String(rtc.getLocalEpoch());
 
-    mqttClient.loop();
+		mqttClient.publish(SECRETS::MqttTopicDeviceStatus, incomingMessage.c_str());
+	}
 
-    CheckForNfcTag();
+	mqttClient.loop();
+
+	CheckForNfcTag();
 }
 
 String getIncomingPayloadAsString(const uint8_t *payload, unsigned int payloadLength);
@@ -264,7 +272,7 @@ void setupElegantOtaServer()
 {
     server.on("/", []()
     {
-        server.send(200, "text/plain", "Hi! This is PN532 NFC reader");
+        server.send(200, "text/plain", "Hi! This is PN532 front door NFC reader");
     });
 
     ElegantOTA.begin(&server);    // Start ElegantOTA
@@ -295,7 +303,9 @@ void connectToMqtt()
             Serial.print("failed with state ");
             Serial.print(mqttClient.state());
 
-            delay(50);
+            yield();
+            delay(500);
+        	yield();
         }
     }
 
